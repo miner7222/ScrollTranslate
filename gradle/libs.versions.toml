@@ -1,0 +1,11 @@
+[versions]
+agp = "9.4.1"
+libxposed = "102.0.0"
+androidx-annotation = "1.10.0"
+
+[plugins]
+agp-app = { id = "com.android.application", version.ref = "agp" }
+
+[libraries]
+libxposed-api = { group = "io.github.libxposed", name = "api", version.ref = "libxposed" }
+androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "androidx-annotation" }

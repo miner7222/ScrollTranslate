@@ -1,0 +1,36 @@
+# Gradle
+.gradle/
+build/
+
+# Kotlin
+.kotlin/
+
+# Android / IDE
+local.properties
+.idea/
+*.iml
+.navigation/
+captures/
+out/
+*.hprof
+
+# Native
+.externalNativeBuild/
+.cxx/
+
+# Signing
+*.jks
+*.keystore
+keystore.properties
+
+# Build artifacts
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Logs / OS junk
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini

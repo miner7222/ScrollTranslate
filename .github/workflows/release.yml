@@ -1,0 +1,88 @@
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Java
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Fix Line Endings and Grant Execute Permission for Gradlew
+        run: |
+          sed -i -e 's/\r$//' gradlew
+          chmod +x gradlew
+
+      - name: Verify Version Match
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/}
+          TAG_VERSION=${TAG_VERSION#v}
+          GRADLE_VERSION=$(./gradlew -q :app:printVersionName)
+          echo "Git Tag Version: $TAG_VERSION"
+          echo "Gradle Version: $GRADLE_VERSION"
+          if [ "$TAG_VERSION" != "$GRADLE_VERSION" ]; then
+            echo "Error: Version mismatch!"
+            echo "Tag is '$TAG_VERSION' but build.gradle.kts says '$GRADLE_VERSION'"
+            exit 1
+          fi
+          echo "Version match confirmed."
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4.0.4
+
+      - name: Install SDK Platform
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platforms;android-36" "build-tools;36.1.0" > /dev/null
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.SIGNING_KEY_STORE_BASE64 }}" | base64 --decode > app/release-keystore.jks
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6.3.0
+
+      - name: Build Release APK
+        env:
+          SIGNING_KEY_STORE_PATH: release-keystore.jks
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Rename APK
+        run: |
+          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/scrolltranslate-${{ github.ref_name }}.apk
+
+      - name: Generate APK Checksum
+        run: |
+          sha256sum app/build/outputs/apk/release/scrolltranslate-${{ github.ref_name }}.apk \
+            > app/build/outputs/apk/release/scrolltranslate-${{ github.ref_name }}.apk.sha256
+
+      - name: Create Draft Release
+        uses: softprops/action-gh-release@v3.0.3
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            app/build/outputs/apk/release/scrolltranslate-${{ github.ref_name }}.apk
+            app/build/outputs/apk/release/scrolltranslate-${{ github.ref_name }}.apk.sha256
+
+      - name: Cleanup Keystore
+        if: ${{ always() }}
+        run: rm -f app/release-keystore.jks
