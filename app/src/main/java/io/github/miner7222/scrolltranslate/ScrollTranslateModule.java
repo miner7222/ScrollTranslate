@@ -671,23 +671,35 @@ public final class ScrollTranslateModule extends XposedModule {
         }
         Object sc = getField(animator, "mSurfaceControl");
         if (!(sc instanceof SurfaceControl)) {
+            Object controller = getField(animator, "mSurfaceController");
+            sc = controller != null ? getField(controller, "mSurfaceControl") : null;
+        }
+        if (!(sc instanceof SurfaceControl)) {
             return;
         }
         Object title = getField(attrs, "mTitle");
         SurfaceControl.Transaction tx = new SurfaceControl.Transaction();
-        Method setSkip = SurfaceControl.Transaction.class.getDeclaredMethod(
-                "setSkipScreenshot", SurfaceControl.class, boolean.class);
-        setSkip.setAccessible(true);
-        setSkip.invoke(tx, sc, true);
+        try {
+            Method setSkip = SurfaceControl.Transaction.class.getDeclaredMethod(
+                    "setSkipScreenshot", SurfaceControl.class, boolean.class);
+            setSkip.setAccessible(true);
+            setSkip.invoke(tx, sc, true);
+        } catch (NoSuchMethodException ignored) {
+            // Android < 12 does not support setSkipScreenshot
+        }
         // Mark the surface trusted on the input side. The privateFlags
         // route is gated behind mCanAddInternalSystemWindow, which GSA
         // lacks, so apply the SurfaceControl flag directly. Without it,
         // an opaque fullscreen overlay occludes every touch below and
         // InputDispatcher drops them (BLOCK_UNTRUSTED).
-        Method setTrusted = SurfaceControl.Transaction.class.getDeclaredMethod(
-                "setTrustedOverlay", SurfaceControl.class, boolean.class);
-        setTrusted.setAccessible(true);
-        setTrusted.invoke(tx, sc, true);
+        try {
+            Method setTrusted = SurfaceControl.Transaction.class.getDeclaredMethod(
+                    "setTrustedOverlay", SurfaceControl.class, boolean.class);
+            setTrusted.setAccessible(true);
+            setTrusted.invoke(tx, sc, true);
+        } catch (NoSuchMethodException ignored) {
+            // Android < 12 does not support setTrustedOverlay
+        }
         tx.apply();
         tx.close();
         log(Log.INFO, TAG, "event=ss_overlay_skip_screenshot title=" + title
