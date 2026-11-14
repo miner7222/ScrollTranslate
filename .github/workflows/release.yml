@@ -75,7 +75,7 @@ jobs:
             > app/build/outputs/apk/release/scrolltranslate-${{ github.ref_name }}.apk.sha256
 
       - name: Create Draft Release
-        uses: softprops/action-gh-release@v3.0.3
+        uses: softprops/action-gh-release@v3.0.4
         with:
           draft: true
           generate_release_notes: true
